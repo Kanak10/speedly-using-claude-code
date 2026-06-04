@@ -1,7 +1,11 @@
-from flask import Flask, render_template
-from database.db import get_db, init_db, seed_db
+import os
+
+from flask import Flask, flash, redirect, render_template, request, url_for
+
+from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
 with app.app_context():
     init_db()
@@ -17,9 +21,30 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    return render_template("register.html")
+    if request.method == "GET":
+        return render_template("register.html", name="", email="", error=None)
+
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+
+    if not name:
+        return render_template("register.html", name=name, email=email, error="Name is required.")
+
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return render_template("register.html", name=name, email=email, error="Please enter a valid email address.")
+
+    if len(password) < 8:
+        return render_template("register.html", name=name, email=email, error="Password must be at least 8 characters.")
+
+    if get_user_by_email(email):
+        return render_template("register.html", name=name, email=email, error="An account with this email already exists.")
+
+    create_user(name, email, password)
+    flash("Account created successfully! Please sign in.")
+    return redirect(url_for("login"))
 
 
 @app.route("/login")
