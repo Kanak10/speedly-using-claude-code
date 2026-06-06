@@ -1,11 +1,13 @@
 import os
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for
 
-from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.db import create_user, get_db, get_user_by_email, get_user_by_email_with_password, init_db, seed_db
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
 
 with app.app_context():
     init_db()
@@ -52,6 +54,32 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/login", methods=["POST"])
+def login_post():
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+
+    if not email:
+        flash("Email address is required.")
+        return render_template("login.html", email="", error="Email address is required.")
+
+    if not password:
+        flash("Password is required.")
+        return render_template("login.html", email=email, error="Password is required.")
+
+    user = get_user_by_email_with_password(email, password)
+    if user:
+        # Store user info in session
+        session['user_id'] = user['id']
+        session['user_name'] = user['name']
+        session['user_email'] = user['email']
+        flash("Logged in successfully!")
+        return redirect(url_for("landing"))
+    else:
+        flash("Invalid email or password.")
+        return render_template("login.html", email=email, error="Invalid email or password.")
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
@@ -68,7 +96,10 @@ def privacy():
 
 @app.route("/logout")
 def logout():
-    return "Logout — coming in Step 3"
+    # Clear the session
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for("landing"))
 
 
 @app.route("/profile")

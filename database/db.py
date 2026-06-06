@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import date
 
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "spendly.db")
@@ -61,6 +61,14 @@ def create_user(name, email, password):
     user_id = cursor.lastrowid
     db.close()
     return user_id
+
+
+def get_user_by_email_with_password(email, password):
+    """Get user by email and verify password"""
+    user = get_user_by_email(email)
+    if user and check_password_hash(user['password_hash'], password):
+        return user
+    return None
 
 
 def seed_db():
